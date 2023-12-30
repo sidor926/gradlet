@@ -62,6 +62,7 @@
         "vector": "cpp",
         "__verbose_abort": "cpp",
         "execution": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "set": "cpp"
     }
 }
