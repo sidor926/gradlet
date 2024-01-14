@@ -1,3 +1,5 @@
+// #pragma once
+
 #include <iostream>
 #include <functional>
 #include <memory>
@@ -14,7 +16,6 @@ class Value: public std::enable_shared_from_this<Value>{
         std::set<std::shared_ptr<Value>> _parents; 
 
     public: 
-
         Value(float data, std::set<std::shared_ptr<Value>> _parents = {}) { 
             this->data = data;
             this->grad = 0.0;
@@ -74,14 +75,13 @@ void backward(std::shared_ptr<Value> root) {
 
     root->grad = 1.0; 
 
-    for (auto it = topo.rbegin(); it != topo.rend(); ++it) {
+    for (auto it = topo.rbegin(); it != topo.rend(); ++it) { //traverse in reverse order innit
         if ((*it)->_backward) { // input nodes don't have a _backward
             (*it)->_backward();
         }
     }
 }
 
-//how are we handling the bakward cases when there is no leaf node? 
 
 
 /*
@@ -93,79 +93,122 @@ other->grad += 1.0 * out->grad;
       other.grad += self.data * out.grad
 */
 
-class Neuron {
-    private: 
-        std::random_device rd; 
-
+class Neuron {    
     public: 
         std::vector<std::shared_ptr<Value>> weights;
-        std::vector<std::shared_ptr<Value>> biases;
+        std::shared_ptr<Value> bias;
+        std::shared_ptr<Value> out;
         
-    Neuron(int no_of_neurons) {
-        std::mt19937 gen(rd());
-        std::uniform_real_distribution<> distr(-1, 1);
-
-        for (int i = 0; i < no_of_neurons; ++i) {
-            // Initialize each weight with a random value
-            auto weight = std::make_shared<Value>(distr(gen));
+    Neuron(int inp_size) {
+        static std::random_device rd; 
+        static std::mt19937 gen(rd());
+        static std::uniform_real_distribution<> distr(-1, 1);
+        
+        //initialize random weights
+        for (int i = 0; i < inp_size; ++i) {
+            std::shared_ptr<Value> weight = std::make_shared<Value>(distr(gen));
             weights.push_back(weight);
         }
 
-        for (int i = 0; i < no_of_neurons; ++i) {
-            //print all data values of each Value node
-        }
+        //initialize random bias 
+        bias = std::make_shared<Value>(distr(gen));
+        // std::cout << "Bias: " << bias->data << std::endl;
 
-        // Initialize bias with a random value
-        auto bias = std::make_shared<Value>(distr(gen));
+        // for (int i = 0; i < inp_size; ++i) {
+        //     std::cout << "w" << i << ": " << weights[i]->data << std::endl;
+        // }
+    }
+
+    //calling the neuron object
+    std::shared_ptr<Value> operator()(const std::vector<std::shared_ptr<Value>>& inputs) {
+        //dot product
+        double outData = 0.0; 
+        for (int j = 0; j < inputs.size(); ++j) {
+            outData += weights[j]->data * inputs[j]->data;
+        }
+        outData += bias->data;
+        out = std::make_shared<Value>(outData);   
+
+        return out;
     }
 };
 
+class Layer {
+    public: 
+        std::vector<std::shared_ptr<Neuron>> neurons; //Layer is vector that holds pointers to Neuron objects. public for now.
 
-int main() {
-    auto a = std::make_shared<Value>(2);
-    auto b = std::make_shared<Value>(3); 
-    auto c = a->mul(b);
+    public: 
+        Layer(int nin, int nout) { 
+            for (int i = 0; i < nout; i++) {
+                auto neuron = std::make_shared<Neuron>(nin); // initialize nout neurons with nin weights 
+                neurons.push_back(neuron);
 
-    //using the same node twice bug needs to solved for, maybe its already solved. that is up next. 
-    auto d = std::make_shared<Value>(4);
-    auto e = c->add(d);
+                // std::cout << "Neuron " << i << ":\n";
+                // for (int j = 0; j < nin; ++j) {
+                //     std::cout << "  Weight " << j << ": " << neuron->weights[j]->data << "\n";
+                // }
+                // std::cout << "  Bias: " << neuron->bias->data << "\n";
+            }
+        }
 
-    auto f = std::make_shared<Value>(5);
-    auto g = f->mul(e);
+        void operator()(const std::vector<std::shared_ptr<Value>>& inputs) {
+            //outs should be Neuron values calculated with the inputted weights
+                for (auto& neuron : neurons) {
+                    neuron->operator()(inputs);
+                }
+        }
+};
 
-    // e->grad = 1.0; 
-    // e->_backward(); //should save gradients for c and d
+//Neuron receives the vector x as an input. So neuron should receive size? But Neuron does a dot product inside it? 
+//Layer just receives input size
 
-    backward(g);
-    std::cout << "g data: " << g->data << std::endl;
-
-    std::cout << "f data: " << f->data << std::endl;
-    std::cout << "f grad: " << f->grad << std::endl;
-
-    std::cout << "e data: " << e->data << std::endl;
-    std::cout << "e grad: " << e->grad <<std::endl;
-    
-    // c->_backward(); //should save gradients for a and b. 
-    std::cout << "d data: " << d->data << std::endl;
-    std::cout << "d grad: " << d->grad << std::endl;
-    std::cout << "c data: " << c->data << std::endl;
-    std::cout << "c grad: " << c->grad << std::endl;
-
-    std::cout << "b data: " << b->data << std::endl;
-    std::cout << "b grad: " << b->grad << std::endl;
-
-    std::cout << "a data: " << a->data << std::endl;
-    std::cout << "a grad: " << a->grad << std::endl;
+static std::random_device rd; 
+static std::mt19937 gen(rd());
+static std::uniform_real_distribution<> distr(-1, 1);
 
 
-    // std::cout << &c << std::endl;
-    // for (const auto& parent : e->_parents) {
-    //     std::cout << "Parent data: " << parent->data << std::endl;
-    // }
-
-    return 0;
+void printLayerDetails(Layer &layer) {
+    std::cout << "Printing layer details:" << "\n";
+    for (int i = 0; i < layer.neurons.size(); ++i) {
+        auto& neuron = layer.neurons[i];
+        std::cout << "Neuron " << i << ":\n";
+        for (int j = 0; j < neuron->weights.size(); ++j) {
+            std::cout << "  Weight " << j << ": " << neuron->weights[j]->data << "\n";
+        }
+        std::cout << "  Bias: " << neuron->bias->data << "\n";
+        std::cout << "  Output: " << neuron->out->data << "\n";
+    }
 }
 
+int main() {
+    auto x = std::vector<std::shared_ptr<Value>>(); //vector of pointers to a Value object
+    
+    //make some xi's
+    for (int i = 0; i < 3; i++) {
+        std::shared_ptr<Value> xi = std::make_shared<Value>(distr(gen)); 
+        x.push_back(xi);
+        std::cout << "x" << i << ": " << x[i]->data << std::endl;
+    }
+
+    // auto n1 = std::make_shared<Neuron>(x.size());
+    // (*n1)(x);
+    // std::cout << "n1 out " << n1 << ": " << n1->out->data << std::endl;
+
+    // auto n1 = Neuron(3);
+    // auto our_neuron = n1(x);
+
+    // std::cout << "n1 out " << &n1 << ": " << n1.out->data << std::endl;
+
+    // Create a Layer instance
+    Layer layer(3, 2); // Assuming 3 inputs and 2 neurons in the layer
+
+    // Pass inputs to the layer and get the outputs
+    layer(x);
+    printLayerDetails(layer);
+
+    // Print outputs
+    return 0;
+}
 
 
 /* 
