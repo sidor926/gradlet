@@ -1,0 +1,17 @@
+*
+!*.c
+!*.cpp
+!*.h
+!*.hpp
+!*.json
+!*.gitignore
+!*.sh
+!*.py
+*.exe
+
+# Object files
+*.o
+*.obj
+
+# .vscode directory
+.vscode/
