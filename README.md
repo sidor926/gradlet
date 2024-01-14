@@ -1,0 +1,1 @@
+Autograd Implementation in cpp, inspired by Karpathy's [Micrograd](https://www.youtube.com/watch?v=VMj-3S1tku0&t=6567s). 

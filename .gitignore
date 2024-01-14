@@ -7,6 +7,7 @@
 !*.gitignore
 !*.sh
 !*.py
+!*.md
 *.exe
 
 # Object files
