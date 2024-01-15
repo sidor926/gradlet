@@ -83,7 +83,6 @@ void backward(std::shared_ptr<Value> root) {
 }
 
 
-
 /*
 self->grad += 1.0 * out->grad;
 other->grad += 1.0 * out->grad;
@@ -138,34 +137,24 @@ class Layer {
         std::vector<std::shared_ptr<Neuron>> neurons; //Layer is vector that holds pointers to Neuron objects. public for now.
 
     public: 
-        Layer(int nin, int nout) { 
-            for (int i = 0; i < nout; i++) {
-                auto neuron = std::make_shared<Neuron>(nin); // initialize nout neurons with nin weights 
+        Layer(int num_input_weights, int num_neurons) { 
+            for (int i = 0; i < num_neurons; i++) {
+                auto neuron = std::make_shared<Neuron>(num_input_weights); 
                 neurons.push_back(neuron);
-
-                // std::cout << "Neuron " << i << ":\n";
-                // for (int j = 0; j < nin; ++j) {
-                //     std::cout << "  Weight " << j << ": " << neuron->weights[j]->data << "\n";
-                // }
-                // std::cout << "  Bias: " << neuron->bias->data << "\n";
             }
         }
 
-        void operator()(const std::vector<std::shared_ptr<Value>>& inputs) {
+        std::vector<std::shared_ptr<Value>> operator()(const std::vector<std::shared_ptr<Value>>& inputs) {
             //outs should be Neuron values calculated with the inputted weights
-                for (auto& neuron : neurons) {
-                    neuron->operator()(inputs);
-                }
+            auto outs = std::vector<std::shared_ptr<Value>>();
+            for (auto& neuron : neurons) {
+                auto out = neuron->operator()(inputs);
+                outs.push_back(out);
+            }
+
+            return outs; 
         }
 };
-
-//Neuron receives the vector x as an input. So neuron should receive size? But Neuron does a dot product inside it? 
-//Layer just receives input size
-
-static std::random_device rd; 
-static std::mt19937 gen(rd());
-static std::uniform_real_distribution<> distr(-1, 1);
-
 
 void printLayerDetails(Layer &layer) {
     std::cout << "Printing layer details:" << "\n";
@@ -180,6 +169,42 @@ void printLayerDetails(Layer &layer) {
     }
 }
 
+class MLP { 
+    public:
+        std::vector<std::shared_ptr<Layer>> mlp_layers; //vector of pointers to layer objects
+    
+    public: 
+        MLP(int input_vector_size, std::vector<int> layer_sizes) {
+            std::shared_ptr<Layer> l;
+            for (int i = 0; i < layer_sizes.size(); i++) {
+                if (i == 0) { //first hidden layer 
+                    l = std::make_shared<Layer>(input_vector_size, layer_sizes[i]); //num weights per neuron, num_neurons
+                } else {
+                    l = std::make_shared<Layer>(layer_sizes[i-1], layer_sizes[i]); 
+                }
+                mlp_layers.push_back(l);
+                // printLayerDetails(*l);
+            }
+            // std::cout << "Created all layers inside mlp_layers" << "\n";
+        }
+
+        void operator()(const std::vector<std::shared_ptr<Value>>& inputs) {
+            std::vector<std::shared_ptr<Value>> inps = inputs;
+            for (int i = 0; i < mlp_layers.size(); i++) { //complete feedforward
+                // layer(inputs);
+                // printLayerDetails(*mlp_layers[i]);
+                inps = mlp_layers[i]->operator()(inps);
+                printLayerDetails(*mlp_layers[i]);
+            }
+        }
+};
+
+//Layer just receives input size
+
+static std::random_device rd; 
+static std::mt19937 gen(rd());
+static std::uniform_real_distribution<> distr(-1, 1);
+
 int main() {
     auto x = std::vector<std::shared_ptr<Value>>(); //vector of pointers to a Value object
     
@@ -190,25 +215,13 @@ int main() {
         std::cout << "x" << i << ": " << x[i]->data << std::endl;
     }
 
-    // auto n1 = std::make_shared<Neuron>(x.size());
-    // (*n1)(x);
-    // std::cout << "n1 out " << n1 << ": " << n1->out->data << std::endl;
-
-    // auto n1 = Neuron(3);
-    // auto our_neuron = n1(x);
-
-    // std::cout << "n1 out " << &n1 << ": " << n1.out->data << std::endl;
-
-    // Create a Layer instance
-    Layer layer(3, 2); // Assuming 3 inputs and 2 neurons in the layer
-
-    // Pass inputs to the layer and get the outputs
-    layer(x);
-    printLayerDetails(layer);
+    auto mlp_definition = std::vector<int>{3, 2};
+    MLP mlp(x.size(), mlp_definition); //constructor takes the input feature size 
+    mlp(x); 
 
     // Print outputs
     return 0;
-}
+};
 
 
 /* 
