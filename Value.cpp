@@ -83,6 +83,22 @@ std::shared_ptr<Value> Value::exp() {
     return out;
 }
 
+
+std::shared_ptr<Value> Value::operator/(std::shared_ptr<Value> other) {
+    return this->mul(other->pow(-1));
+}
+
+// __neg__: -self
+std::shared_ptr<Value> Value::operator-() {
+    return this->mul(std::make_shared<Value>(-1));
+}
+
+// __sub__: self - other
+std::shared_ptr<Value> Value::operator-(std::shared_ptr<Value> other) {
+    return this->add(-(*other));
+}
+
+
 void build_topo_order(const std::shared_ptr<Value> v, std::vector<std::shared_ptr<Value>>& topo, std::set<std::shared_ptr<Value>>& visited) {
     if (visited.find(v) == visited.end()) { //if v not in visited
         visited.insert(v);
@@ -108,3 +124,20 @@ void backward(std::shared_ptr<Value> root) {
         }
     }
 }
+
+void Value::printGraph(int depth) const {
+    // Print indentation for visual hierarchy
+    for (int i = 0; i < depth; ++i) {
+        std::cout << "  ";
+    }
+    // Print current node's data and gradient
+    std::cout << "Node data: " << data << ", grad: " << grad << "\n";
+
+    // Recursively print all parents (ancestors in the graph)
+    for (const auto& parent : _parents) {
+        if (parent) {  // Ensure the parent pointer is not null
+            parent->printGraph(depth + 1);
+        }
+    }
+}
+
