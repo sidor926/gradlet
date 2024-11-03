@@ -83,7 +83,45 @@ std::shared_ptr<Value> Value::exp() {
     return out;
 }
 
+std::shared_ptr<Value> Value::sub(std::shared_ptr<Value> other) {
+    // Create a new Value object representing the subtraction
+    auto out = std::make_shared<Value>(this->data - other->data);
 
+    // Set parents for autograd
+    out->_parents.insert(shared_from_this());
+    out->_parents.insert(other);
+
+    // Define the backward function to compute gradients
+    out->_backward = [this, other, out]() {
+        this->grad += 1.0 * out->grad;          // Gradient for `this`
+        other->grad += -1.0 * out->grad;        // Gradient for `other` (negative due to subtraction)
+    };
+
+    return out;
+}
+
+std::shared_ptr<Value> Value::divide(std::shared_ptr<Value> other) {
+    // Calculate the reciprocal of `other` (i.e., `other^-1`) and multiply by `this`
+    auto out = this->mul(other->pow(-1));
+
+    // Set up parents for autograd
+    out->_parents.insert(shared_from_this());
+    out->_parents.insert(other);
+
+    // Define the backward function for gradients
+    out->_backward = [this, other, out]() {
+        // Gradient of `this / other` w.r.t `this` is `1 / other`
+        this->grad += (1.0 / other->data) * out->grad;
+
+        // Gradient of `this / other` w.r.t `other` is `-this / (other^2)`
+        other->grad += -(this->data / (other->data * other->data)) * out->grad;
+    };
+
+    return out;
+}
+
+
+//TODO: Fix these operators to work properly. 
 std::shared_ptr<Value> Value::operator/(std::shared_ptr<Value> other) {
     return this->mul(other->pow(-1));
 }

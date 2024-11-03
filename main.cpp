@@ -1,5 +1,3 @@
-// #pragma once
-
 #include <iostream>
 #include <functional>
 #include <memory>
@@ -10,24 +8,21 @@
 #include "Value.h"
 
 
-class Neuron {    
+class Neuron { 
     public: 
         std::vector<std::shared_ptr<Value>> weights;
         std::shared_ptr<Value> bias;
-        std::shared_ptr<Value> out;
+        std::shared_ptr<Value> out = std::make_shared<Value>(0);  
         
     Neuron(int inp_size) {
         static std::random_device rd; 
         static std::mt19937 gen(rd());
         static std::uniform_real_distribution<> distr(-1, 1);
-        
-        //initialize random weights
-        for (int i = 0; i < inp_size; ++i) {
+
+        for (int i = 0; i < inp_size; i++) {
             std::shared_ptr<Value> weight = std::make_shared<Value>(distr(gen));
             weights.push_back(weight);
         }
-
-        //initialize random bias 
         bias = std::make_shared<Value>(distr(gen));
         // std::cout << "Bias: " << bias->data << std::endl;
 
@@ -36,42 +31,46 @@ class Neuron {
         // }
     }
 
-    //calling the neuron object
-    std::shared_ptr<Value> operator()(const std::vector<std::shared_ptr<Value>>& inputs) {
-        //dot product
-        double outData = 0.0; 
-        for (int j = 0; j < inputs.size(); ++j) {
-            outData += weights[j]->data * inputs[j]->data;
+    //TODO: add check to see if input dim == num weights, right now just using weight.size 
+    std::shared_ptr<Value> operator() (const std::vector<std::shared_ptr<Value>>& inputs) {
+        out = std::make_shared<Value>(0);  //this was the problem
+        for (int j = 0; j < weights.size(); j++) {
+            // std::cout << "input: " << inputs[j]->data << "\n";
+            // std::cout << "weight: " << weights[j]->data << "\n";
+            out = out->add(inputs[j]->mul(weights[j]));
         }
-        outData += bias->data;
-        out = std::make_shared<Value>(outData);   
 
+        out = out->add(bias);
+        // std::cout << "out data: " << out->data << "\n";
         return out;
     }
+
+    std::vector<std::shared_ptr<Value>> parameters; 
+
+    
 };
+
 
 class Layer {
     public: 
-        std::vector<std::shared_ptr<Neuron>> neurons; //Layer is vector that holds pointers to Neuron objects. public for now.
-
-    public: 
-        Layer(int num_input_weights, int num_neurons) { 
-            for (int i = 0; i < num_neurons; i++) {
-                auto neuron = std::make_shared<Neuron>(num_input_weights); 
-                neurons.push_back(neuron);
-            }
+        std::vector<std::shared_ptr<Neuron>> neurons; 
+    
+    Layer(int inp_size, int num_neurons) {
+        for (int i = 0; i < num_neurons; i++) {
+            auto neuron = std::make_shared<Neuron>(inp_size);
+            neurons.push_back(neuron);
         }
+    }
 
-        std::vector<std::shared_ptr<Value>> operator()(const std::vector<std::shared_ptr<Value>>& inputs) {
-            //outs should be Neuron values calculated with the inputted weights
-            auto outs = std::vector<std::shared_ptr<Value>>();
-            for (auto& neuron : neurons) {
-                auto out = neuron->operator()(inputs);
-                outs.push_back(out);
-            }
-
-            return outs; 
+    std::vector<std::shared_ptr<Value>> operator()(const std::vector<std::shared_ptr<Value>>& inputs) {
+        //outs should be Neuron values calculated with the inputted weights
+        auto outs = std::vector<std::shared_ptr<Value>>(); 
+         for (auto& neuron : neurons) {
+            auto out = neuron->operator()(inputs);
+            outs.push_back(out);
         }
+        return outs; 
+    }
 };
 
 void printLayerDetails(Layer &layer) {
@@ -84,19 +83,20 @@ void printLayerDetails(Layer &layer) {
         std::cout << "  Bias: " << neuron->bias->data << "\n";
         std::cout << "  Output: " << neuron->out->data << "\n";
     }
-}
+};
 
 class MLP { 
-    public:
-        std::vector<std::shared_ptr<Layer>> mlp_layers; //vector of pointers to layer objects
-    
     public: 
-        MLP(int input_vector_size, std::vector<int> layer_sizes) {
-            std::shared_ptr<Layer> l;
-            for (int i = 0; i < layer_sizes.size(); i++) {
-                if (i == 0) { //first hidden layer 
-                    l = std::make_shared<Layer>(input_vector_size, layer_sizes[i]); //num weights per neuron, num_neurons
-                } else {
+        std::vector<std::shared_ptr<Layer>> mlp_layers; 
+        std::vector<std::shared_ptr<Value>> parameters; 
+
+    public: 
+        MLP(int inp_size, std::vector<int> layer_sizes) {
+            std::shared_ptr<Layer> l; 
+            for (int i = 0; i <layer_sizes.size(); i++) {
+                if (i == 0) {
+                    l = std::make_shared<Layer>(inp_size, layer_sizes[i]); 
+                } else { 
                     l = std::make_shared<Layer>(layer_sizes[i-1], layer_sizes[i]); 
                 }
                 mlp_layers.push_back(l);
@@ -116,101 +116,98 @@ class MLP {
             }
             return inps;
         }
-};
 
-//Layer just receives input size
+        std::vector<std::shared_ptr<Value>> get_all_params() {
+            parameters.clear();
+            for (int i = 0; i < mlp_layers.size(); i++) {
+                for (int j = 0; j < mlp_layers[i]->neurons.size(); j++) {
+                    for (int k = 0; k < mlp_layers[i]->neurons[j]->weights.size(); k++) {
+                        //add all weights to the array
+                        parameters.push_back(mlp_layers[i]->neurons[j]->weights[k]);
+                    }
+                    parameters.push_back(mlp_layers[i]->neurons[j]->bias); //also a shared pointer 
+                // break; 
+                }
+            // break;
+            }
+            return parameters;
+        }
 
-std::shared_ptr<Value> msee(std::vector<std::shared_ptr<Value>> ypred, std::vector<float> ys) {
+
+
+        };
+
+std::shared_ptr<Value> msee(std::vector<std::shared_ptr<Value>> ypred, std::vector<std::shared_ptr<Value>> ys) {
     //expected output - output of last neuron)^2)
     std::shared_ptr<Value> error = std::make_shared<Value>(0.0);
 
     for (int i = 0; i < ypred.size(); i++) {
-        error->data += pow(ys[i] - ypred[i]->data, 2); 
+        // std::cout << ys[i]->data << "\n";
+        error = error->add(ys[i]->sub(ypred[i])->pow(2));
         // std::cout << "Error " << i << ": " << error << "\n";
     }
     
-    error->data = error->data / ypred.size();
+    error = error->divide(std::make_shared<Value>(ypred.size()));
     // std::cout << "Error: " << error->data << "\n";
     return error; 
 }
 
-
-static std::random_device rd; 
-static std::mt19937 gen(rd());
-static std::uniform_real_distribution<> distr(-1, 1);
-
 int main() {
     auto x = std::vector<std::shared_ptr<Value>>(); //vector of pointers to a Value object
-    
-    //make some xi's
-    // for (int i = 0; i < 3; i++) {
-    //     std::shared_ptr<Value> xi = std::make_shared<Value>(distr(gen)); 
-    //     x.push_back(xi);
-    //     std::cout << "x" << i << ": " << x[i]->data << std::endl;
-    // }
-
-    // auto mlp_definition = std::vector<int>{3, 2};
-    // MLP mlp(x.size(), mlp_definition); //constructor takes the input feature size 
-    // mlp(x); 
-
-    // std::vector<std::shared_ptr<Value>> input_values;
-    // for (auto& val : {2.0, 3.0, -1.0}) {
-    //     input_values.push_back(std::make_shared<Value>(val));
-    // }
-
     std::vector<int> layer_sizes = {4, 4, 1}; 
     
-
-    // Forward pass
-    // mlp(input_values);
-    std::vector<std::vector<float>> xs = { //what is xs and ys? 
+    std::vector<std::vector<float>> xs = { 
         {2.0, 3.0, -1.0},
         {3.0, -1.0, 0.5},
         {0.5, 1.0, 1.0},
         {1.0, 1.0, -1.0}
     };
 
-    // std::cout << "Printing values " << xs[0][0] << " details:" << "\n";
-    std::vector<float> ys = {1.0, -1.0, -1.0, 1.0};
 
-    MLP mlp(3, layer_sizes);
-    std::vector<std::shared_ptr<Value>> input_values;
-    std::vector<std::shared_ptr<Value>> ypred;
-    for (int i = 0; i < 4; i++) { //all input vectors
-        for (auto& val : xs[i]) { //each value in the input vector
-            // std::cout << "Each val " << val << " details" << "\n";
-            input_values.push_back(std::make_shared<Value>(val));
-        }
-        auto out = mlp(input_values); //forward pass 
-        ypred.push_back(out[0]);
-        input_values.clear(); 
-        // break;
+    std::vector<float> ys = {1.0, -1.0, -1.0, 1.0};
+    std::vector<std::shared_ptr<Value>> ys_valobjs; 
+    for (int i = 0; i < ys.size(); i++) {
+        ys_valobjs.push_back(std::make_shared<Value>(ys[i]));
     }
 
-    //print ypred 
-    // for (int i = 0; i < ypred.size(); i++) {
-    //     std::cout << "ypred " << i << ": " << ypred[i]->data << "\n";
-    // }
 
-    auto loss = msee(ypred, ys);
-    std::cout << "Parents of loss:\n" << loss->_parents.size() << "\n";
+    MLP mlp(3, layer_sizes);
 
-    // for (const auto& parent : loss->_parents) {
-    //     if (parent) {  // Check if the parent pointer is not null
-    //         std::cout << "Parent data: " << parent->data << ", grad: " << parent->grad << "\n";
-    //     } else {
-    //         std::cout << "Null parent\n";
-    //     }
-    // }
+    std::vector<std::vector<std::shared_ptr<Value>>> xs_valobjs;
+    for (const auto& row : xs) {
+        std::vector<std::shared_ptr<Value>> val_row;
+        for (float val : row) {
+            val_row.push_back(std::make_shared<Value>(val));
+        }
+        xs_valobjs.push_back(val_row);
+    }
 
+    int epochs = 100;
+    for (int i = 0; i < epochs; i++) {
 
-    // loss
+        std::vector<std::shared_ptr<Value>> ypred;
+        std::vector<std::shared_ptr<Value>> out; 
 
-    //print the type of loss 
-    // std::cout << "Type of loss: " << typeid(loss).name() << "\n";
-    // std::cout << mlp.mlp_layers[0]->neurons[0]->weights[0]->grad << "\n";
-    // backward(loss); //backprop
-    // std::cout << mlp.mlp_layers[0]->neurons[0]->weights[0]->grad << "\n"; //should be 0.0
+        for (int j = 0; j < xs_valobjs.size(); j++) {
+            out = mlp(xs_valobjs[j]);
+            ypred.push_back(out[0]);
+        }
+
+        auto loss = msee(ypred, ys_valobjs);
+
+        auto all_params = mlp.get_all_params();
+        for (int k = 0; k < all_params.size(); k++) {
+            all_params[k]->grad = 0.0; 
+        }
+        backward(loss);
+
+        for (int l = 0; l < all_params.size(); l++) {
+            all_params[l]->data += -0.01 * all_params[l]->grad; 
+        } 
+
+        std::cout << "Iteration: " << i << " Loss: " << loss->data << "\n";
+    
+    }
 
     return 0;
 };
