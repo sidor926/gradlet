@@ -70,6 +70,20 @@ std::shared_ptr<Value> Value::tanh() {
 return out;
 }
 
+std::shared_ptr<Value> Value::sigmoid() {
+    double x = this->data; 
+    double t = 1 / (1 + std::exp(-x));
+    auto out = std::make_shared<Value>(t); 
+
+    out->_parents.insert(shared_from_this());
+    
+    out->_backward = [this, t, out]() {
+        this->grad += t * (1 - t) * out->grad;
+    };
+
+    return out;
+}
+
 std::shared_ptr<Value> Value::exp() {
     double x = this->data;
     auto out = std::make_shared<Value>(std::exp(x));

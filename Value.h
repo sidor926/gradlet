@@ -22,6 +22,7 @@ class Value: public std::enable_shared_from_this<Value> {
         std::shared_ptr<Value> mul(std::shared_ptr<Value> other);
         std::shared_ptr<Value> pow(float other);
         std::shared_ptr<Value> tanh();
+        std::shared_ptr<Value> sigmoid();
         std::shared_ptr<Value> exp();
         std::shared_ptr<Value> sub(std::shared_ptr<Value> other);
         std::shared_ptr<Value> divide(std::shared_ptr<Value> other);

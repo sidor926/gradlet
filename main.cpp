@@ -6,6 +6,7 @@
 #include <random>
 #include <cmath>
 #include "Value.h"
+#include "tests.cpp"
 
 
 class Neuron { 
@@ -153,61 +154,63 @@ std::shared_ptr<Value> msee(std::vector<std::shared_ptr<Value>> ypred, std::vect
 }
 
 int main() {
-    auto x = std::vector<std::shared_ptr<Value>>(); //vector of pointers to a Value object
-    std::vector<int> layer_sizes = {4, 4, 1}; 
+    // auto x = std::vector<std::shared_ptr<Value>>(); //vector of pointers to a Value object
+    // std::vector<int> layer_sizes = {4, 4, 1}; 
     
-    std::vector<std::vector<float>> xs = { 
-        {2.0, 3.0, -1.0},
-        {3.0, -1.0, 0.5},
-        {0.5, 1.0, 1.0},
-        {1.0, 1.0, -1.0}
-    };
+    // std::vector<std::vector<float>> xs = { 
+    //     {2.0, 3.0, -1.0},
+    //     {3.0, -1.0, 0.5},
+    //     {0.5, 1.0, 1.0},
+    //     {1.0, 1.0, -1.0}
+    // };
 
 
-    std::vector<float> ys = {1.0, -1.0, -1.0, 1.0};
-    std::vector<std::shared_ptr<Value>> ys_valobjs; 
-    for (int i = 0; i < ys.size(); i++) {
-        ys_valobjs.push_back(std::make_shared<Value>(ys[i]));
-    }
+    // std::vector<float> ys = {1.0, -1.0, -1.0, 1.0};
+    // std::vector<std::shared_ptr<Value>> ys_valobjs; 
+    // for (int i = 0; i < ys.size(); i++) {
+    //     ys_valobjs.push_back(std::make_shared<Value>(ys[i]));
+    // }
 
 
-    MLP mlp(3, layer_sizes);
+    // MLP mlp(3, layer_sizes);
 
-    std::vector<std::vector<std::shared_ptr<Value>>> xs_valobjs;
-    for (const auto& row : xs) {
-        std::vector<std::shared_ptr<Value>> val_row;
-        for (float val : row) {
-            val_row.push_back(std::make_shared<Value>(val));
-        }
-        xs_valobjs.push_back(val_row);
-    }
+    // std::vector<std::vector<std::shared_ptr<Value>>> xs_valobjs;
+    // for (const auto& row : xs) {
+    //     std::vector<std::shared_ptr<Value>> val_row;
+    //     for (float val : row) {
+    //         val_row.push_back(std::make_shared<Value>(val));
+    //     }
+    //     xs_valobjs.push_back(val_row);
+    // }
 
-    int epochs = 100;
-    for (int i = 0; i < epochs; i++) {
+    // int epochs = 100;
+    // for (int i = 0; i < epochs; i++) {
 
-        std::vector<std::shared_ptr<Value>> ypred;
-        std::vector<std::shared_ptr<Value>> out; 
+    //     std::vector<std::shared_ptr<Value>> ypred;
+    //     std::vector<std::shared_ptr<Value>> out; 
 
-        for (int j = 0; j < xs_valobjs.size(); j++) {
-            out = mlp(xs_valobjs[j]);
-            ypred.push_back(out[0]);
-        }
+    //     for (int j = 0; j < xs_valobjs.size(); j++) {
+    //         out = mlp(xs_valobjs[j]);
+    //         ypred.push_back(out[0]);
+    //     }
 
-        auto loss = msee(ypred, ys_valobjs);
+    //     auto loss = msee(ypred, ys_valobjs);
 
-        auto all_params = mlp.get_all_params();
-        for (int k = 0; k < all_params.size(); k++) {
-            all_params[k]->grad = 0.0; 
-        }
-        backward(loss);
+    //     auto all_params = mlp.get_all_params();
+    //     for (int k = 0; k < all_params.size(); k++) {
+    //         all_params[k]->grad = 0.0; 
+    //     }
+    //     backward(loss);
 
-        for (int l = 0; l < all_params.size(); l++) {
-            all_params[l]->data += -0.01 * all_params[l]->grad; 
-        } 
+    //     for (int l = 0; l < all_params.size(); l++) {
+    //         all_params[l]->data += -0.01 * all_params[l]->grad; 
+    //     } 
 
-        std::cout << "Iteration: " << i << " Loss: " << loss->data << "\n";
+    //     std::cout << "Iteration: " << i << " Loss: " << loss->data << "\n";
     
-    }
+    // }
+
+    test_sigmoid();
 
     return 0;
 };
@@ -223,7 +226,19 @@ g = (a*b+d)*f
 
 g++ -std=c++14 -c Value.cpp -o Value.o && g++ -std=c++14 -c main.cpp -o main.o && g++ -std=c++14 Value.o main.o -o main && ./main
 
+approximate an and and not gate 
 
+for inputs 
+
+00 0 
+01 0 
+10 0 
+11 0 
+
+for the logic gate i have a similar thing, i have 
+an an xs and a ys, we want the nn to fit the xs and the ys 
+how is this mathematically different from train on a bit of data, then try on 
+other data? 
 
 */
 
