@@ -44,7 +44,7 @@ void test_sigmoid() {
 
     for (auto& sigmoid_outs : inputs_sigmoid_calculated) {
         sigmoid_outs->grad = 1.0;
-        sigmoid_outs->_backward(); //backward isnt backwarding
+        sigmoid_outs->_backward(); 
     }
 
     bool grads_correct = true;
@@ -60,4 +60,15 @@ void test_sigmoid() {
         std::cout << "Sigmoid grads calculated incorrectly" << "\n"; 
     } else { std:: cout << "Sigmoid calculated correctly for input vector" << "\n";}
 }
+
+/* 
+
+Manually tested backprop for the following expressions: 
+
+e = a*b + d 
+e = a*b*d
+e = a*b + a*b 
+g = (a*b+d)*f 
+
+*/
 
